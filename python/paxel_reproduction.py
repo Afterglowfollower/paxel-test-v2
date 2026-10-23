@@ -1043,8 +1043,13 @@ def main(argv=None):
             person = previous
         else:
             try:
+                # Synthesis must emit strict JSON; reasoning keeps that reliable
+                # even when extraction stages run with thinking disabled.
+                THINKING = "auto"
                 person = synthesize_person(aggregate_input, key, args.model, args.endpoint)
+                THINKING = args.thinking
             except Exception as exc:
+                THINKING = args.thinking
                 person = synthesize_person({"episodes": []}, None, None, None)
                 person.update({"status": "failed", "error": type(exc).__name__,
                                "headline": "跨会话评价尚未完成",
