@@ -287,18 +287,25 @@ def link_episodes(groups, sessions):
 
 
 REQUEST_TIMEOUT = 240
+THINKING = "disabled"
 
 
 def chat_text(system, user, key, model, endpoint, attempts=2, timeout=None):
     timeout = REQUEST_TIMEOUT if timeout is None else timeout
     if endpoint not in base.MODEL_ENDPOINTS:
         raise ValueError("Endpoint must be an approved Chat Completions URL")
-    body = json.dumps({"model": model, "stream": False, "max_tokens": 8192,
-                       "messages": [{"role": "system", "content": system},
-                                    {"role": "user", "content": user}]}, ensure_ascii=False).encode()
-    req = request.Request(endpoint, data=body,
-                          headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
-                          method="POST")
+    payload = {"model": model, "stream": False, "max_tokens": 8192,
+               "messages": [{"role": "system", "content": system},
+                            {"role": "user", "content": user}]}
+    if THINKING == "disabled":
+        payload["thinking"] = {"type": "disabled"}
+
+    def build():
+        return request.Request(endpoint, data=json.dumps(payload, ensure_ascii=False).encode(),
+                               headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+                               method="POST")
+
+    req = build()
     last_error = None
     for attempt in range(attempts):
         try:
@@ -309,6 +316,11 @@ def chat_text(system, user, key, model, endpoint, attempts=2, timeout=None):
             return content.strip()
         except (OSError, ValueError) as exc:
             last_error = exc
+            # Models without a thinking switch reject the field; drop it and retry.
+            if "thinking" in payload and isinstance(exc, urlerror.HTTPError) and exc.code == 400:
+                payload.pop("thinking", None)
+                req = build()
+                continue
             if attempt + 1 < attempts:
                 time.sleep(2 * (attempt + 1))
     raise last_error
@@ -776,10 +788,14 @@ def main(argv=None):
                         help="Shared token for --relay (default: PAXEL_RELAY_TOKEN)")
     parser.add_argument("--request-timeout", type=int, default=240,
                         help="Per-attempt model request timeout in seconds (default 240)")
+    parser.add_argument("--thinking", choices=("auto", "disabled"), default="disabled",
+                        help="Disable model reasoning tokens for extraction tasks (default); "
+                             "use auto for the previous reasoning behaviour")
     parser.add_argument("--model", help="Model ID (default: doubao-seed-2-1-pro-260915)")
     parser.add_argument("--endpoint", help="Ark Chat Completions URL")
     args = parser.parse_args(argv)
-    global REQUEST_TIMEOUT
+    global REQUEST_TIMEOUT, THINKING
+    THINKING = args.thinking
     if args.days < 0:
         parser.error("--days must be zero or positive")
     if args.concurrency < 1:

@@ -126,6 +126,7 @@ npx --yes github:Afterglowfollower/paxel-test --all-local --sources claude,codex
 | `--api-key-file PATH` | 从指定文件读取 key；默认 `~/.config/paxel-test/ark_api_key` |
 | `--relay URL` | 走共享中转，不需要本地 key；令牌由 `PAXEL_RELAY_TOKEN` 或 `--relay-token` 提供 |
 | `--request-timeout N` | 单次模型请求超时秒数，默认 240 |
+| `--thinking MODE` | `auto` 或 `disabled`；默认 `disabled`，关闭推理 token。抽取类任务（叙事/分类）用 `disabled` 明显更快，评分口径如需更强推理可改回 `auto` |
 | `--model NAME` | 模型 ID；方舟默认 `doubao-seed-2-1-pro-260915`，可改为已开通的模型 ID |
 | `--concurrency N` | 模型调用并发数，默认 4；`1` 为串行 |
 | `--max-parts N` | 跳过需要超过 N 段叙事的超大会话，默认 0（不限制） |

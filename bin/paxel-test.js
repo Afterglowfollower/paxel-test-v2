@@ -38,6 +38,7 @@ if (has('--help') || has('-h')) {
   --api-key-file PATH  从指定文件读取 key（默认 ~/.config/paxel-test/ark_api_key）
   --relay URL          走共享中转，不需要本地 key；令牌用 PAXEL_RELAY_TOKEN 提供
   --request-timeout N  单次模型请求超时秒数，默认 240
+  --thinking MODE      auto | disabled；默认 disabled，关掉推理 token 以加快抽取类任务
   --prompt-profile P   local（默认）或 v15-v5（需先运行 tools/extract-v15-prompts.sh）
   --no-score           只生成本地证据报告，不调用模型
   --model NAME         模型 ID；方舟默认 doubao-seed-2-1-pro-260915
