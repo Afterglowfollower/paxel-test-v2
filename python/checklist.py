@@ -375,12 +375,18 @@ def fill_with_model(rows, context, caller, key, model, endpoint):
                 f"只返回这些 id: {', '.join(str(r['id']) for r in items)}")
         try:
             raw = caller(CHECKLIST_INSTRUCTIONS, user, key, model, endpoint)
+            parsed_items = _parse(raw)
+            if not parsed_items:
+                # One retry: a group that returns nothing would otherwise turn
+                # every item in it into an unexplained unknown.
+                raw = caller(CHECKLIST_INSTRUCTIONS, user, key, model, endpoint)
+                parsed_items = _parse(raw)
         except Exception as exc:  # a failed group must not break the report
             for r in items:
                 r["verdict"] = "unknown"
                 r["note"] = f"模型判定未完成: {type(exc).__name__}"
             continue
-        for item in _parse(raw):
+        for item in parsed_items:
             if not isinstance(item, dict):
                 continue
             try:
