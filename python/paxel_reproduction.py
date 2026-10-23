@@ -29,6 +29,7 @@ import multi_agent_sources as multi
 import paxel_evidence as extra
 import prompt_profiles as profiles
 import checklist as checklist_mod
+import decisions as decisions_mod
 import trajectory as trajectory_mod
 
 
@@ -968,6 +969,12 @@ def main(argv=None):
         trajectory = trajectory_mod.build(evidence["sessions"], decisions)
         save(out / "trajectory.json", trajectory)
         (out / "trajectory.html").write_text(trajectory_mod.render_html(trajectory), encoding="utf-8")
+        decisions_mod.annotate(decisions)
+        linked = decisions_mod.attach_outcomes(decisions, evidence["sessions"])
+        print(f"[decisions] patterns + {linked} outcome links", file=sys.stderr)
+        confirmed = decisions_mod.confirm_with_model(decisions, chat_text, key, args.model, args.endpoint)
+        print(f"[decisions] confirmed {confirmed} outcomes", file=sys.stderr)
+        save(out / "decision_exchanges.json", decisions)
 
         def review_one(group):
             try:

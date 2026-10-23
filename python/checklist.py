@@ -153,6 +153,28 @@ def decision_counts(decisions):
     return counts
 
 
+def pattern_usage(decisions):
+    counts = {}
+    for exchanges in decisions.values():
+        for exchange in exchanges or []:
+            for pid in exchange.get("patterns") or []:
+                counts[pid] = counts.get(pid, 0) + 1
+    return counts
+
+
+def outcome_usage(decisions):
+    counts = {"positive": 0, "negative": 0, "neutral": 0, "unknown": 0, "unlinked": 0}
+    for exchanges in decisions.values():
+        for exchange in exchanges or []:
+            outcome = exchange.get("outcome")
+            if not outcome:
+                counts["unlinked"] += 1
+                continue
+            label = outcome.get("label") or "unknown"
+            counts[label] = counts.get(label, 0) + 1
+    return counts
+
+
 def row(item, verdict, note, refs=None):
     item_id, category, question, method = item
     return {"id": item_id, "category": category, "question": question,
@@ -190,9 +212,27 @@ def build(report_dir):
                             f"约束类指令 {constraint} 次" + (f"，另有 {sum(steering.values())} 条引导" if steering else ""),
                             [h["ref"] for h in steering_hits if h["action"] == "constrain"][:5]))
         elif item_id == 20:
+            patterns = pattern_usage(data["decisions"])
             total = sum(decisions.values())
-            rows.append(row(item, "yes" if total else "unknown",
-                            f"共 {total} 条决策：" + "、".join(f"{k} {v}" for k, v in sorted(decisions.items())) if total else "无决策记录"))
+            if patterns:
+                top = "、".join(f"{k} {v}" for k, v in sorted(patterns.items(), key=lambda kv: -kv[1])[:6])
+                rows.append(row(item, "yes",
+                                f"{total} 条决策覆盖 {len(patterns)} 种模式：{top}",
+                                list(patterns)[:6]))
+            elif total:
+                rows.append(row(item, "yes", f"共 {total} 条决策：" + "、".join(
+                    f"{k} {v}" for k, v in sorted(decisions.items()))))
+            else:
+                rows.append(row(item, "unknown", "无决策记录"))
+        elif item_id == 21:
+            outcomes = outcome_usage(data["decisions"])
+            labelled = outcomes["positive"] + outcomes["negative"] + outcomes["neutral"]
+            if labelled:
+                rows.append(row(item, "yes",
+                                f"{labelled} 条已标注：正面 {outcomes['positive']}、负面 {outcomes['negative']}、"
+                                f"中性 {outcomes['neutral']}、未知 {outcomes['unknown']}"))
+            else:
+                rows.append(row(item, "unknown", f"{outcomes['unlinked']} 条决策未关联到可判定结果"))
         elif item_id == 11:
             rows.append(row(item, "yes" if error_pairs else "unknown",
                             f"{len(error_pairs)} 次失败后出现人工介入",
